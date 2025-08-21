@@ -17,8 +17,8 @@
     </button>
     <div class="app-bar">
       <a class="app-title-container" style="display: flex; align-items: center;" href="/">
-        <img src="/assets/homescreen.png" alt="UNHub R2 OSS" style="height: 24px" />
-        <h1 class="app-title" style="font-size: 20px;margin: 0 25px 0 8px; user-select: none;">UNHub R2 OSS</h1>
+        <img src="/assets/homescreen.png" alt="UNHub OSS" style="height: 40px;margin-left: 5px;" />
+        <h1 class="app-title" style="font-size: 20px;margin: 0 25px 0 8px; user-select: none;">UNHub OSS</h1>
       </a>
 
       <input type="search" v-model="search" aria-label="Search" placeholder="键入关键词以全局搜索文件" />
