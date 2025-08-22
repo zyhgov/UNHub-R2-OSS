@@ -15,13 +15,17 @@
       </a>
     </div>
 
-<div class="stats">
-  <span id="running-time">平稳运行 : 0 天 0 时 0 分 0 秒</span>
-</div>
+    <div class="stats">
+      <span id="running-time">平稳运行 : 0 天 0 时 0 分 0 秒</span><br>
+      <span id="storage-usage" v-if="storageUsage !== null">存储空间: {{ storageUsage }} MB</span>
+      <span id="storage-usage" v-else> | 正在加载存储空间...</span> 
+    </div>
 
     <div class="project-links">
       <strong>项目:</strong><a href="https://github.com/zyhgov/UNHub-R2-OSS" target="_blank"
         rel="noopener noreferrer">UNHub-R2-OSS</a>
+      <strong>OSS存储:</strong><a href="https://oss.zyhgov.cn/" target="_blank"
+        rel="noopener noreferrer">zyhgov</a>
       <strong>支持:</strong><a href="https://www.cloudflare-cn.com/enterprise/" target="_blank"
         rel="noopener noreferrer">Cloudflare</a>
     </div>
@@ -38,15 +42,22 @@ export default {
   name: "Footer",
   data() {
     return {
-      homeUrl: "https://zyhgov.cn/",
+      homeUrl: "https://zyhorg.cn/",
       blogUrl: "https://zyhorg.ac.cn/globalnews.html",
       githubUrl: "https://github.com/zyhgov",
-      emailUrl: "mailto:info@zyhorg.cn"
+      emailUrl: "mailto:info@zyhorg.cn",
+      // 已填入从Cloudflare控制台获取的凭据
+      apiToken: 'Xo6SmdwPYksrjb-3pVwOPILDm9IEoIUOL686RVtM',
+      accountId: '9c928de2c73dab8e3c9303f39e20d733',
+      // 请将 'my-cloudy-storage' 替换为你在R2中创建的实际存储桶名称
+      bucketName: 'my-cloudy-storage',
+      // 用于存储获取到的使用量
+      storageUsage: null
     };
   },
   mounted() {
-    // 设置网站开始运行的时间（请根据实际上线日期修改）
-    const startDate = new Date('2025-06-24T00:00:00').getTime(); // 替换为你自己的上线时间
+    // 设置网站开始运行的时间
+    const startDate = new Date('2025-06-24T00:00:00').getTime();
 
     const updateRunningTime = () => {
       const now = new Date().getTime();
@@ -69,16 +80,60 @@ export default {
 
     // 每秒钟更新一次
     this.runningTimeInterval = setInterval(updateRunningTime, 1000);
+
+    // 在组件挂载后调用API获取存储桶使用量
+    this.fetchStorageUsage();
   },
   beforeUnmount() {
     // 清除定时器，防止内存泄漏
     if (this.runningTimeInterval) {
       clearInterval(this.runningTimeInterval);
     }
+  },
+  methods: {
+    // 从Cloudflare API获取存储桶使用量
+    async fetchStorageUsage() {
+      try {
+        // 构造API请求URL
+        const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/r2/buckets/${this.bucketName}`;
+        
+        // 设置请求头
+        const headers = {
+          'Authorization': `Bearer ${this.apiToken}`,
+          'Content-Type': 'application/json'
+        };
+
+        // 发送GET请求
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: headers
+        });
+
+        // 检查响应状态
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        // 解析JSON响应
+        const data = await response.json();
+
+        // 从返回的数据中提取存储桶尺寸（单位是字节）
+        const bytesUsed = data.result.bytesUsed;
+        
+        // 将字节转换为MB并保留两位小数
+        const mbUsed = (bytesUsed / (1024 * 1024)).toFixed(2);
+        
+        // 更新组件的数据
+        this.storageUsage = mbUsed;
+
+      } catch (error) {
+        console.error('Error fetching storage usage:', error);
+        this.storageUsage = '获取失败';
+      }
+    }
   }
 };
 </script>
-
 
 <style scoped>
 .footer {
@@ -88,13 +143,15 @@ export default {
   background-color: #ffffff77;
   font-size: 16px;
   border-radius: 50% 50% 0 0;
-
 }
-#running-time {
+
+#running-time,
+#storage-usage {
   font-weight: 600;
   color: #2c2c2c;
   letter-spacing: 0.5px;
 }
+
 .icons {
   display: flex;
   justify-content: center;
