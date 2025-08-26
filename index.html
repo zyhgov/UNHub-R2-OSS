@@ -1,190 +1,50 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>UNHub R2 OSS</title>
-    <script src="https://cdn.jsdmirror.com/npm/vue@3.2.37/dist/vue.global.min.js"></script>
-    <script src="https://cdn.jsdmirror.com/npm/axios@0.27.2/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdmirror.com/npm/vue3-sfc-loader@0.9.5/dist/vue3-sfc-loader.min.js"></script>
-    <script defer src="https://events.vercount.one/js"></script>
-    <link rel='stylesheet' href='https://static.zeoseven.com/zsft/243/main/result.css' />
-    <link rel="prefetch" href="/assets/main.mjs" />
-    <link rel="stylesheet" href="/assets/main.css" />
-    <link rel="manifest" href="/assets/manifest.json" />
-    <link rel="icon" type="image/png" href="/favicon.ico" />
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UNHub R2 OSS</title>
+  <script src="https://cdn.jsdmirror.com/npm/vue@3.2.37/dist/vue.global.min.js"></script>
+  <script src="https://cdn.jsdmirror.com/npm/axios@0.27.2/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdmirror.com/npm/vue3-sfc-loader@0.9.5/dist/vue3-sfc-loader.min.js"></script>
+  <script src="https://events.vercount.one/js" defer></script>
+  <link rel="stylesheet" href="https://static.zeoseven.com/zsft/243/main/result.css">
+  <link rel="prefetch" href="/assets/main.mjs">
+  <link rel="stylesheet" href="/assets/main.css">
+  <link rel="manifest" href="/assets/manifest.json">
+  <link rel="icon" href="/favicon.ico" type="image/png">
+  <!-- 引入 Turnstile 验证 JS -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+  <div id="app"></div>
 
-    <!-- 🔧 Cloudflare Turnstile 脚本 -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-    
-    <style>
-      /* 验证容器样式 */
-      #turnstile-container {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 9999;
-        text-align: center;
-      }
-      
-      /* 加载提示 */
-      #loading-message {
-        color: #666;
-        font-family: Arial, sans-serif;
-      }
-      
-      /* 验证失败提示 */
-      #error-message {
-        display: none;
-        color: #ff0000;
-        font-family: Arial, sans-serif;
-        margin-top: 10px;
-      }
-      
-      /* WCAG 合规性：确保高对比度 */
-      .turnstile-accessible {
-        position: absolute;
-        left: -10000px;
-        top: auto;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-      }
-    </style>
-  </head>
-  <body>
-    <!-- 页面内容默认隐藏 -->
-    <div id="app" style="display: none;"></div>
+  <script>
+    const { loadModule } = window["vue3-sfc-loader"];
 
-    <!-- 🔧 Turnstile 验证容器 -->
-    <div id="turnstile-container">
-      <div id="loading-message">安全验证中...</div>
-      <div class="cf-turnstile" 
-           data-sitekey="0x4AAAAAABuzqQAkthcwvYM_"
-           data-callback="onTurnstileSuccess"
-           data-error-callback="onTurnstileError"
-           data-expired-callback="onTurnstileExpired"
-           data-theme="light"
-           data-size="normal">
-      </div>
-      <div id="error-message">验证加载失败，请刷新页面重试</div>
-    </div>
+    const options = {
+      moduleCache: { vue: Vue },
+      async getFile(url) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.statusText + " " + url);
+        return { getContentData: (asBinary) => asBinary ? res.arrayBuffer() : res.text() };
+      },
+      addStyle(textContent) {
+        const style = document.createElement("style");
+        style.textContent = textContent;
+        const ref = document.head.getElementsByTagName("style")[0] || null;
+        document.head.insertBefore(style, ref);
+      },
+    };
 
-    <!-- WCAG 合规性支持 -->
-    <div class="turnstile-accessible" role="status" aria-live="polite">
-      Turnstile 验证状态：等待验证
-    </div>
+    const app = Vue.createApp({
+      components: {
+        App: Vue.defineAsyncComponent(() => loadModule("/assets/App.vue", options)),
+      },
+      template: "<App></App>",
+    });
 
-    <script>
-      // 全局变量
-      let turnstileWidgetId = null;
-
-      // Turnstile 验证成功回调
-      function onTurnstileSuccess(token) {
-        console.log('✅ Turnstile 验证成功:', token);
-        
-        // 更新 WCAG 状态
-        updateAccessibleStatus('验证成功，正在加载页面内容');
-        
-        // 隐藏验证容器
-        document.getElementById('turnstile-container').style.display = 'none';
-        
-        // 解锁页面内容
-        document.getElementById('app').style.display = 'block';
-        
-        // 触发自定义事件（可选）
-        window.dispatchEvent(new CustomEvent('turnstileVerified', { detail: { token } }));
-      }
-
-      // Turnstile 验证错误回调
-      function onTurnstileError() {
-        console.error('❌ Turnstile 验证出错');
-        updateAccessibleStatus('验证出错，请刷新页面重试');
-        document.getElementById('error-message').style.display = 'block';
-        document.getElementById('loading-message').style.display = 'none';
-      }
-
-      // Turnstile 验证过期回调
-      function onTurnstileExpired() {
-        console.warn('⏰ Turnstile 验证过期');
-        updateAccessibleStatus('验证已过期，请刷新页面重试');
-        alert('验证已过期，请刷新页面重试');
-      }
-
-      // 更新无障碍状态
-      function updateAccessibleStatus(message) {
-        const accessibleDiv = document.querySelector('.turnstile-accessible');
-        if (accessibleDiv) {
-          accessibleDiv.textContent = `Turnstile 验证状态：${message}`;
-        }
-      }
-
-      // 页面加载完成后检查 Turnstile
-      window.addEventListener('load', function() {
-        // 3秒后检查 Turnstile 是否加载
-        setTimeout(function() {
-          if (typeof turnstile === 'undefined') {
-            console.error('Turnstile 脚本加载失败');
-            onTurnstileError();
-          } else {
-            console.log('✅ Turnstile 脚本加载成功');
-            updateAccessibleStatus('正在等待验证');
-          }
-        }, 3000);
-      });
-
-      // 页面可见性变化时的处理（可选）
-      document.addEventListener('visibilitychange', function() {
-        if (!document.hidden && typeof turnstile !== 'undefined') {
-          // 页面重新可见时可以刷新验证（如果需要）
-          console.log('页面重新可见');
-        }
-      });
-    </script>
-
-    <script>
-      const { loadModule } = window["vue3-sfc-loader"];
-
-      const options = {
-        moduleCache: { vue: Vue },
-        async getFile(url) {
-          const res = await fetch(url);
-          if (!res.ok)
-            throw Object.assign(new Error(res.statusText + " " + url), { res });
-          return {
-            getContentData: (asBinary) =>
-              asBinary ? res.arrayBuffer() : res.text(),
-          };
-        },
-        addStyle(textContent) {
-          const style = document.createElement("style");
-          style.textContent = textContent;
-          const ref = document.head.getElementsByTagName("style")[0] || null;
-          document.head.insertBefore(style, ref);
-        },
-      };
-
-      const app = Vue.createApp({
-        components: {
-          App: Vue.defineAsyncComponent(() =>
-            loadModule("/assets/App.vue", options)
-          ),
-        },
-        template: "<App></App>",
-        
-        // Vue 应用挂载后的回调
-        mounted() {
-          console.log('Vue 应用已挂载');
-        }
-      });
-
-      // 监听 Turnstile 验证事件（可选）
-      window.addEventListener('turnstileVerified', function(event) {
-        console.log('收到 Turnstile 验证成功事件:', event.detail);
-      });
-
-      app.mount("#app");
-    </script>
-  </body>
+    app.mount("#app");
+  </script>
+</body>
 </html>
